@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EarnShield Prototype</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin="anonymous" src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin="anonymous" src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel for JSX -->
+    <script crossorigin="anonymous" src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #cbd5e1;
+            /* Slate 300 */
+            color: #1e293b;
+            /* Slate 800 */
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            /* Prevent body scroll */
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Hide Scrollbar inside the app content */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Animation for Toast Progress */
+        @keyframes countdown {
+            from {
+                width: 100%;
+            }
+
+            to {
+                width: 0%;
+            }
+        }
+
+        .animate-countdown {
+            animation: countdown 15s linear forwards;
+        }
+
+        @keyframes slide-down {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-down {
+            animation: slide-down 0.3s ease-out forwards;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.2s ease-out forwards;
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-up {
+            animation: slide-up 0.3s ease-out forwards;
+        }
+
+        /* Smooth Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #10b981;
+            /* Emerald 500 */
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Custom color for the percentage slider thumb */
+        input[type=range].percent-slider::-webkit-slider-thumb {
+            background: #6366f1;
+            /* Indigo 500 */
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #334155;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icon Components (Inline SVGs) ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const icons = {
+                shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+                zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+                home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+                pieChart: <path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z" />,
+                user: <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />,
+                lock: <g><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></g>,
+                close: <g><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></g>,
+                check: <polyline points="20 6 9 17 4 12" />,
+                wallet: <g><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" /><path d="M4 6v12a2 2 0 0 1 2 2h14v-4" /><path d="M18 12a2 2 0 0 0 0 4h4v-4z" /></g>,
+                money: <g><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="12" y1="12" x2="12.01" y2="12" /></g>,
+                settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.18-.08a2 2 0 0 0-2 0l-.45.25a2 2 0 0 0-1 1.73V10a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.73 1l.25.43a2 2 0 0 1 0 2l-.08.18a2 2 0 0 0 0 2l.25.45a2 2 0 0 0 1.73 1H10a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.18.08a2 2 0 0 0 2 0l.45-.25a2 2 0 0 0 1-1.73V14a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.73-1l-.25-.43a2 2 0 0 1 0-2l.08-.18a2 2 0 0 0 0-2l-.25-.45a2 2 0 0 0-1.73-1H14a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.18-.08a2 2 0 0 0-2 0z" />,
+                back: <path d="M19 12H5M12 19l-7-7 7-7" />,
+                bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />,
+                trendingUp: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />,
+                refresh: <g><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></g>,
+                chevronRight: <polyline points="9 18 15 12 9 6" />,
+                plus: <g><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></g>,
+                lightning: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+                info: <g><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></g>,
+                alert: <g><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></g>,
+                target: <g><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></g>,
+                piggy: <g><path d="M19 5c-1.5 0-2.8 0.6-3.8 1.6l-1.2 1.2 1.2 1.2c1-1 2.3-1.6 3.8-1.6s2.8 0.6 3.8 1.6l1.2-1.2-1.2-1.2c-1-1-2.3-1.6-3.8-1.6zM16 12c0 1.1-0.9 2-2 2s-2-0.9-2-2 0.9-2 2-2 2 0.9 2 2zM12 14c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4zM12 2c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z" /></g>,
+                trash: <g><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></g>
+            };
+
+            return (
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        // --- IPhone Frame Wrapper (FIXED DIMENSIONS + SCALED EXTERNALLY) ---
+        const IPhoneWrapper = ({ children }) => {
+            return (
+                // We use fixed dimensions here (375x812) to ensure layout integrity
+                // The parent component will handle shrinking this whole block using CSS transform
+                <div 
+                    className="relative w-[375px] h-[812px] bg-white rounded-[40px] shadow-2xl overflow-hidden border-[8px] border-slate-900 ring-1 ring-slate-900/5 flex-shrink-0"
+                >
+                    {/* Dynamic Island / Notch - Fixed Sizes */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[120px] h-[30px] bg-slate-900 rounded-b-2xl z-50 pointer-events-none"></div>
+
+                    {/* Screen Content */}
+                    <div className="h-full w-full overflow-hidden flex flex-col bg-slate-50">
+                        {children}
+                    </div>
+
+                    {/* Home Indicator */}
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-[130px] h-[5px] bg-slate-900/20 rounded-full z-50 pointer-events-none"></div>
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            // Scale State for Responsive Fit
+            const [scale, setScale] = useState(1);
+
+            // Calculate Scale on Resize
+            useEffect(() => {
+                const handleResize = () => {
+                    const vh = window.innerHeight;
+                    const vw = window.innerWidth;
+                    
+                    // We want to fit the phone (812px) + button area (~60px) + padding (~40px)
+                    const contentHeight = 912; 
+                    const contentWidth = 400; // Phone width (375) + padding
+                    
+                    const scaleH = Math.min(1, vh / contentHeight);
+                    const scaleW = Math.min(1, vw / contentWidth);
+                    
+                    // Use the smaller scale to fit both dimensions
+                    setScale(Math.min(scaleH, scaleW));
+                };
+
+                window.addEventListener('resize', handleResize);
+                handleResize(); // Initial calculation
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+
+            // State
+            const [activeTab, setActiveTab] = useState('home');
+
+            // Financial Data State
+            const [dailyTarget, setDailyTarget] = useState(2500);
+            const [todayEarnings, setTodayEarnings] = useState(1000);
+            const [protectedSavings, setProtectedSavings] = useState(10500); 
+            const [streak, setStreak] = useState(12);
+            const [avgMonthlyIncome, setAvgMonthlyIncome] = useState(28450); 
+            
+            // Derived State
+            const bufferDays = (protectedSavings / dailyTarget).toFixed(1);
+            const earningsPercentage = Math.round((todayEarnings / dailyTarget) * 100);
+            const deficit = Math.max(0, dailyTarget - todayEarnings);
+            const surplus = Math.max(0, todayEarnings - dailyTarget); 
+            
+            // Loan States
+            const [activeLoans, setActiveLoans] = useState([]);
+            const totalLoanEligibility = protectedSavings + avgMonthlyIncome;
+            const totalActiveLoanAmount = activeLoans
+                .filter(loan => loan.status === 'Active')
+                .reduce((sum, loan) => sum + loan.amount, 0);
+            const currentLoanEligibility = totalLoanEligibility - totalActiveLoanAmount;
+            
+            // Auto-Save Settings State
+            const [autoSavePercent, setAutoSavePercent] = useState(10);
+            
+            // Goals State (NEW)
+            const [goals, setGoals] = useState([
+                { id: 1, name: 'New Bike', current: 15000, target: 60000, status: 'Active', color: 'emerald' }
+            ]);
+            const [selectedGoal, setSelectedGoal] = useState(null);
+            const [goalInputAmount, setGoalInputAmount] = useState('');
+            const [newGoalName, setNewGoalName] = useState('');
+            const [newGoalTarget, setNewGoalTarget] = useState('');
+            
+            // Transaction History State
+            const [transactions, setTransactions] = useState([
+                { id: 1, type: 'credit', title: 'Auto-Save (Trip #12)', amount: 25, date: 'Yesterday' },
+                { id: 2, type: 'credit', title: 'Auto-Save (Trip #11)', amount: 18, date: 'Yesterday' },
+                { id: 3, type: 'debit', title: 'Withdrawal (Bank)', amount: 500, date: '2 days ago' },
+                { id: 4, type: 'credit', title: 'Auto-Save (Trip #10)', amount: 32, date: '3 days ago' },
+            ]);
+
+            // UI States
+            const [toastActive, setToastActive] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+            const [showSettingsModal, setShowSettingsModal] = useState(false);
+            const [showTransactionsModal, setShowTransactionsModal] = useState(false); 
+            const [showManualSaveModal, setShowManualSaveModal] = useState(false);
+            const [showWithdrawModal, setShowWithdrawModal] = useState(false); 
+            const [showLoanAdModal, setShowLoanAdModal] = useState(false); 
+            const [showTakeLoanModal, setShowTakeLoanModal] = useState(false); 
+            const [showActiveLoansModal, setShowActiveLoansModal] = useState(false); 
+            const [showRepaymentModal, setShowRepaymentModal] = useState(false); 
+            const [repaymentLoanId, setRepaymentLoanId] = useState(null);
+            const [repaymentMethod, setRepaymentMethod] = useState('savings'); 
+            const [showLoanErrorModal, setShowLoanErrorModal] = useState(false);
+            const [showGoalDetailModal, setShowGoalDetailModal] = useState(false); 
+            const [showCreateGoalModal, setShowCreateGoalModal] = useState(false); 
+            
+            const [manualSaveAmount, setManualSaveAmount] = useState('');
+            const [withdrawAmount, setWithdrawAmount] = useState('');
+            const [loanAmountInput, setLoanAmountInput] = useState('');
+            const [repaymentAmount, setRepaymentAmount] = useState(''); 
+
+            // Trip Simulation Handler
+            const handleCompleteTrip = () => {
+                if (toastActive) return;
+                const saveAmount = (150 * autoSavePercent) / 100;
+                
+                setToastMessage({
+                    title: `Trip #14 Paid ₹150`,
+                    subtitle: `Auto-Saving ${autoSavePercent}% (₹${saveAmount.toFixed(1)})`,
+                    type: 'autosave',
+                    amount: saveAmount
+                });
+                setToastActive(true);
+                setTodayEarnings(prev => prev + 150);
+            };
+            
+            // Handle Instant Withdrawal
+            const handleInstantWithdraw = () => {
+                 if (toastActive) return;
+                 setProtectedSavings(prev => prev - deficit);
+                 setTodayEarnings(prev => prev + deficit);
+                 
+                 const newTx = { id: Date.now(), type: 'debit', title: 'Income Smooth Withdrawal', amount: deficit, date: 'Just Now' };
+                 setTransactions(prev => [newTx, ...prev]);
+                 setToastMessage({ title: `Income Smoothed!`, subtitle: `₹${deficit} credited to your linked bank account.`, type: 'withdraw', amount: 0 });
+                 setToastActive(true);
+            };
+
+            // Handle Instant Save for Surplus
+            const handleInstantSaveExtra = () => {
+                if (toastActive) return;
+                setTodayEarnings(prev => prev - surplus);
+                setProtectedSavings(prev => prev + surplus);
+                
+                const newTx = { id: Date.now(), type: 'credit', title: 'Surplus Auto-Save', amount: surplus, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+                setToastMessage({ title: `Saved Extra!`, subtitle: `₹${surplus} surplus moved to savings buffer.`, type: 'manual_save', amount: 0 });
+                setToastActive(true);
+            };
+
+            // Handle Manual Save
+            const handleManualSave = () => {
+                const amount = parseFloat(manualSaveAmount);
+                if (!amount || amount <= 0) return;
+                setProtectedSavings(prev => prev + amount);
+                const newTx = { id: Date.now(), type: 'credit', title: 'Manual Deposit', amount: amount, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+                setShowManualSaveModal(false);
+                setManualSaveAmount('');
+                setToastMessage({ title: `Deposit Successful`, subtitle: `Amount ₹${amount} added from linked bank account.`, type: 'manual_save', amount: 0 });
+                setToastActive(true);
+            };
+
+            // Handle Manual Withdrawal
+            const handleManualWithdraw = () => {
+                const amount = parseFloat(withdrawAmount);
+                if (!amount || amount <= 0) return;
+                if (amount > protectedSavings) { setShowWithdrawModal(false); setShowLoanAdModal(true); return; }
+                setProtectedSavings(prev => prev - amount);
+                const newTx = { id: Date.now(), type: 'debit', title: 'Manual Withdrawal', amount: amount, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                setToastMessage({ title: `Withdrawal Successful`, subtitle: `Amount ₹${amount} sent to HDFC Bank.`, type: 'withdraw', amount: 0 });
+                setToastActive(true);
+            };
+
+            // Loan Functions
+            const handleTakeLoan = () => { setShowLoanAdModal(false); setShowTakeLoanModal(true); }
+            const handleConfirmLoan = () => {
+                const amount = parseFloat(loanAmountInput);
+                if (!amount || amount <= 0) return;
+                if (amount > currentLoanEligibility) { setShowLoanErrorModal(true); return; }
+                const newLoan = { id: Date.now(), amount: amount, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), status: 'Active' };
+                setActiveLoans(prev => [newLoan, ...prev]);
+                const newTx = { id: Date.now(), type: 'credit', title: 'Quick Loan Disbursement', amount: amount, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+                setShowTakeLoanModal(false);
+                setLoanAmountInput('');
+                setToastMessage({ title: `Loan Approved`, subtitle: `₹${amount} disbursed to HDFC Bank instantly.`, type: 'manual_save', amount: 0 });
+                setToastActive(true);
+            }
+            const handleInitiateRepayment = (loanId, amount) => { setRepaymentLoanId(loanId); setRepaymentAmount(amount); setRepaymentMethod('savings'); setShowRepaymentModal(true); }
+            const handleConfirmRepayment = () => {
+                const amount = parseFloat(repaymentAmount);
+                if (repaymentMethod === 'savings') {
+                    if (amount > protectedSavings) { alert("Insufficient savings to repay loan."); return; }
+                    setProtectedSavings(prev => prev - amount);
+                }
+                setActiveLoans(prev => prev.map(loan => { if (loan.id === repaymentLoanId) { return { ...loan, status: 'Paid' }; } return loan; }));
+                const newTx = { id: Date.now(), type: 'debit', title: `Loan Repayment (${repaymentMethod === 'savings' ? 'Savings' : 'Bank'})`, amount: amount, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+                setShowRepaymentModal(false);
+                setRepaymentAmount('');
+                setRepaymentLoanId(null);
+                setToastMessage({ title: `Repayment Successful`, subtitle: `Loan of ₹${amount} marked as paid.`, type: 'withdraw', amount: 0 });
+                setToastActive(true);
+            }
+            
+            // GOAL FUNCTIONS
+            const handleCreateGoal = () => {
+                if(!newGoalName || !newGoalTarget) return;
+                const newGoal = {
+                    id: Date.now(),
+                    name: newGoalName,
+                    current: 0,
+                    target: parseFloat(newGoalTarget),
+                    status: 'Active',
+                    color: 'emerald' // could randomize
+                };
+                setGoals(prev => [...prev, newGoal]);
+                setShowCreateGoalModal(false);
+                setNewGoalName('');
+                setNewGoalTarget('');
+                setToastMessage({ title: `Goal Created`, subtitle: `"${newGoalName}" added to your list.`, type: 'manual_save', amount: 0 });
+                setToastActive(true);
+            }
+
+            const handleAddMoneyToGoal = () => {
+                const amount = parseFloat(goalInputAmount);
+                if(!amount || amount <= 0) return;
+                if(amount > protectedSavings) {
+                    alert("Insufficient savings in Total Savings to add to this goal.");
+                    return;
+                }
+
+                // Deduct from main savings, add to goal (conceptually moving money)
+                setProtectedSavings(prev => prev - amount);
+                setGoals(prev => prev.map(g => {
+                    if(g.id === selectedGoal.id) {
+                        return { ...g, current: g.current + amount };
+                    }
+                    return g;
+                }));
+                
+                // Log Transaction
+                const newTx = { id: Date.now(), type: 'debit', title: `Goal Contribution: ${selectedGoal.name}`, amount: amount, date: 'Just Now' };
+                setTransactions(prev => [newTx, ...prev]);
+
+                setShowGoalDetailModal(false);
+                setGoalInputAmount('');
+                setToastMessage({ title: `Goal Updated`, subtitle: `₹${amount} moved to "${selectedGoal.name}".`, type: 'manual_save', amount: 0 });
+                setToastActive(true);
+            }
+
+            const handleDeleteGoal = () => {
+                if(!selectedGoal) return;
+                
+                // Refund money to main savings if any
+                if(selectedGoal.current > 0) {
+                    setProtectedSavings(prev => prev + selectedGoal.current);
+                    const newTx = { id: Date.now(), type: 'credit', title: `Goal Deleted Refund: ${selectedGoal.name}`, amount: selectedGoal.current, date: 'Just Now' };
+                    setTransactions(prev => [newTx, ...prev]);
+                }
+
+                setGoals(prev => prev.filter(g => g.id !== selectedGoal.id));
+                setShowGoalDetailModal(false);
+                setToastMessage({ title: `Goal Deleted`, subtitle: `Any funds returned to Total Savings.`, type: 'withdraw', amount: 0 });
+                setToastActive(true);
+            }
+
+
+            // Cancel Auto-Save
+            const cancelAutoSave = () => {
+                setToastActive(false);
+            };
+
+            // Effect for Toast Timer
+            useEffect(() => {
+                let timer;
+                if (toastActive) {
+                    timer = setTimeout(() => {
+                        if (toastMessage && toastMessage.type === 'autosave') {
+                             setProtectedSavings(prev => prev + toastMessage.amount);
+                             const newTx = { id: Date.now(), type: 'credit', title: 'Auto-Save (Trip)', amount: toastMessage.amount, date: 'Just Now' };
+                             setTransactions(prev => [newTx, ...prev]);
+                        }
+                        setToastActive(false);
+                    }, 5000); 
+                }
+                return () => clearTimeout(timer);
+            }, [toastActive, toastMessage]);
+
+
+            // Main App Container - UPDATED LAYOUT WITH SCALING
+            return (
+                <div className="flex flex-col items-center justify-center w-full h-screen overflow-hidden bg-slate-300">
+                    {/* Wrapper that gets Scaled */}
+                    <div 
+                        style={{ 
+                            transform: `scale(${scale})`,
+                            transition: 'transform 0.1s ease-out' 
+                        }}
+                        className="flex flex-col items-center gap-6"
+                    >
+                        <IPhoneWrapper>
+                            <div className="flex-1 flex flex-col relative h-full bg-slate-50">
+
+                                {/* --- Toast Notification Overlay --- */}
+                                {toastActive && toastMessage && (
+                                    <div className="absolute top-12 left-4 right-4 z-[70] animate-slide-down">
+                                        <div className="bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+                                            <div className="p-4 flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className={`p-2 rounded-full ${toastMessage.type === 'withdraw' ? 'bg-indigo-500/20' : 'bg-emerald-500/20'}`}>
+                                                        <Icon name={toastMessage.type === 'withdraw' ? 'check' : 'wallet'} size={20} className={toastMessage.type === 'withdraw' ? 'text-indigo-400' : 'text-emerald-400'} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-sm">{toastMessage.title}</h4>
+                                                        <p className="text-xs text-slate-400">{toastMessage.subtitle}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={cancelAutoSave}
+                                                    className="bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition"
+                                                >
+                                                    <Icon name="close" size={16} className="text-slate-400" />
+                                                </button>
+                                            </div>
+                                            {/* Progress Bar */}
+                                            <div className="h-1 w-full bg-slate-800">
+                                                <div className={`h-full origin-left ${toastMessage.type === 'autosave' ? 'bg-emerald-500 animate-countdown' : 'bg-indigo-500 w-full'}`}></div>
+                                            </div>
+                                            {toastMessage.type === 'autosave' && (
+                                                <div className="bg-slate-800/50 px-4 py-2 text-[10px] text-slate-400 text-center uppercase tracking-widest">
+                                                    Swipe or tap close to cancel
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- GOALS MODALS --- */}
+                                {/* Create Goal Modal */}
+                                {showCreateGoalModal && (
+                                    <div className="absolute inset-0 z-[60] bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3">
+                                            <button onClick={() => setShowCreateGoalModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Create New Goal</h2>
+                                        </div>
+                                        <div className="p-6 space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Goal Name</label>
+                                                <input type="text" placeholder="e.g. Mobile Phone" value={newGoalName} onChange={(e) => setNewGoalName(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-emerald-500 transition"/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Target Amount</label>
+                                                <input type="number" placeholder="₹ 0" value={newGoalTarget} onChange={(e) => setNewGoalTarget(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-emerald-500 transition"/>
+                                            </div>
+                                            <button onClick={handleCreateGoal} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 mt-4">Create Goal</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Goal Detail / Fill Modal */}
+                                {showGoalDetailModal && selectedGoal && (
+                                    <div className="absolute inset-0 z-[60] bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3">
+                                            <button onClick={() => setShowGoalDetailModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">{selectedGoal.name}</h2>
+                                            <button onClick={handleDeleteGoal} className="ml-auto p-2 hover:bg-red-50 rounded-full text-red-500">
+                                                <Icon name="trash" size={20} />
+                                            </button>
+                                        </div>
+                                        <div className="p-6 flex flex-col space-y-6">
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
+                                                <p className="text-slate-400 text-xs mb-2">Current Progress</p>
+                                                <h2 className="text-3xl font-bold text-slate-800">₹{selectedGoal.current.toLocaleString()}</h2>
+                                                <p className="text-emerald-600 text-xs font-bold mt-1">of ₹{selectedGoal.target.toLocaleString()}</p>
+                                                <div className="h-3 bg-slate-100 rounded-full overflow-hidden mt-4">
+                                                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min((selectedGoal.current / selectedGoal.target) * 100, 100)}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add Money from Savings</label>
+                                                <div className="flex items-center bg-white border border-slate-200 rounded-xl p-4">
+                                                    <span className="text-slate-400 mr-2 font-bold">₹</span>
+                                                    <input type="number" placeholder="0" value={goalInputAmount} onChange={(e) => setGoalInputAmount(e.target.value)} className="w-full font-bold text-slate-800 outline-none bg-transparent"/>
+                                                </div>
+                                                <p className="text-xs text-slate-400 text-right">Available in Savings: ₹{protectedSavings.toLocaleString()}</p>
+                                            </div>
+
+                                            <button onClick={handleAddMoneyToGoal} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg">Add to Goal</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- OTHER MODALS (Settings, Transactions, etc.) --- */}
+                                {/* --- SETTINGS MODAL --- */}
+                                {showSettingsModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3">
+                                            <button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Account Settings</h2>
+                                        </div>
+                                        <div className="p-6 space-y-8 overflow-y-auto pb-20">
+                                            <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Daily Income Target</label>
+                                                    <Icon name="settings" size={18} className="text-slate-400"/>
+                                                </div>
+                                                <div className="text-4xl font-bold text-emerald-600 text-center py-4">₹{dailyTarget}</div>
+                                                <input type="range" min="1000" max="5000" step="100" value={dailyTarget} onChange={(e) => setDailyTarget(Number(e.target.value))} className="w-full" />
+                                            </div>
+                                            <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Auto-Save Percentage</label>
+                                                    <Icon name="wallet" size={18} className="text-slate-400"/>
+                                                </div>
+                                                <div className="text-4xl font-bold text-indigo-600 text-center py-4">{autoSavePercent}%</div>
+                                                <input type="range" min="1" max="30" step="1" value={autoSavePercent} onChange={(e) => setAutoSavePercent(Number(e.target.value))} className="w-full percent-slider" />
+                                            </div>
+                                            <button onClick={() => setShowSettingsModal(false)} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl">Save Changes</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- TRANSACTIONS MODAL --- */}
+                                {showTransactionsModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowTransactionsModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Transaction History</h2>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
+                                            {transactions.length === 0 && <div className="text-center text-slate-400 py-10">No transactions yet.</div>}
+                                            {transactions.map((tx) => (
+                                                <div key={tx.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`p-2 rounded-full ${tx.type === 'credit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                                                            <Icon name={tx.type === 'credit' ? 'wallet' : 'lock'} size={18} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-sm text-slate-800">{tx.title}</h4>
+                                                            <p className="text-xs text-slate-400">{tx.date}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`font-bold ${tx.type === 'credit' ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                        {tx.type === 'credit' ? '+' : '-'}₹{Math.round(tx.amount)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- MANUAL SAVE / TOP-UP SAVINGS MODAL --- */}
+                                {showManualSaveModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowManualSaveModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Top-Up Savings</h2>
+                                        </div>
+                                        <div className="p-6 flex flex-col space-y-6">
+                                            <div className="text-center">
+                                                <p className="text-slate-500 text-sm mb-2">Enter amount to add to savings</p>
+                                                <div className="flex items-center justify-center text-4xl font-bold text-slate-800">
+                                                    <span className="text-slate-400 mr-1">₹</span>
+                                                    <input type="number" placeholder="0" value={manualSaveAmount} onChange={(e) => setManualSaveAmount(e.target.value)} className="w-40 text-center bg-transparent outline-none placeholder-slate-200" autoFocus />
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">From</span>
+                                                    <span className="text-xs font-bold text-emerald-600">Verified</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="bg-indigo-100 p-2 rounded-lg"><Icon name="home" size={20} className="text-indigo-600"/></div>
+                                                        <div><p className="font-bold text-slate-800 text-sm">HDFC Bank</p><p className="text-xs text-slate-400">**** 8832</p></div>
+                                                    </div>
+                                                    <Icon name="check" size={16} className="text-emerald-500"/>
+                                                </div>
+                                            </div>
+                                            <button onClick={handleManualSave} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 transition transform active:scale-95">Add Money to Savings</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- WITHDRAW FROM SAVINGS MODAL --- */}
+                                {showWithdrawModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowWithdrawModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Withdraw Savings</h2>
+                                        </div>
+                                        <div className="p-6 flex flex-col space-y-6">
+                                            <div className="text-center">
+                                                <p className="text-slate-500 text-sm mb-2">Enter amount to withdraw</p>
+                                                <div className="flex items-center justify-center text-4xl font-bold text-slate-800">
+                                                    <span className="text-slate-400 mr-1">₹</span>
+                                                    <input type="number" placeholder="0" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-40 text-center bg-transparent outline-none placeholder-slate-200" autoFocus />
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-2">Available Balance: ₹{protectedSavings.toLocaleString()}</p>
+                                            </div>
+                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">To Account</span>
+                                                    <span className="text-xs font-bold text-emerald-600">Verified</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="bg-indigo-100 p-2 rounded-lg"><Icon name="home" size={20} className="text-indigo-600"/></div>
+                                                        <div><p className="font-bold text-slate-800 text-sm">HDFC Bank</p><p className="text-xs text-slate-400">**** 8832</p></div>
+                                                    </div>
+                                                    <Icon name="check" size={16} className="text-emerald-500"/>
+                                                </div>
+                                            </div>
+                                            <button onClick={handleManualWithdraw} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg transition transform active:scale-95">Confirm Withdrawal</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- TAKE LOAN MODAL --- */}
+                                {showTakeLoanModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowTakeLoanModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Quick Loan Application</h2>
+                                        </div>
+                                        <div className="p-6 flex flex-col space-y-6">
+                                            <div className="text-center">
+                                                <p className="text-slate-500 text-sm mb-2">Enter Loan Amount</p>
+                                                <div className="flex items-center justify-center text-4xl font-bold text-slate-800">
+                                                    <span className="text-slate-400 mr-1">₹</span>
+                                                    <input type="number" placeholder="0" value={loanAmountInput} onChange={(e) => setLoanAmountInput(e.target.value)} className="w-40 text-center bg-transparent outline-none placeholder-slate-200" autoFocus />
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-2">Max eligible: ₹{currentLoanEligibility.toLocaleString()}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                                                    <p className="text-[10px] text-slate-400 uppercase font-bold">Previous Loan</p>
+                                                    <p className="font-bold text-slate-800">₹{totalActiveLoanAmount.toLocaleString()}</p>
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                                                    <p className="text-[10px] text-emerald-600 uppercase font-bold">Current Eligibility</p>
+                                                    <p className="font-bold text-emerald-600">₹{currentLoanEligibility.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                                                <h3 className="font-bold text-sm text-slate-800 mb-3 border-b border-slate-50 pb-2">Loan Terms</h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between text-xs"><span className="text-slate-500">To Account</span><span className="font-bold text-slate-800">HDFC Bank **** 8832</span></div>
+                                                    <div className="flex justify-between text-xs"><span className="text-slate-500">Interest Rate</span><span className="font-bold text-slate-800">9% p.a.</span></div>
+                                                    <div className="flex justify-between text-xs"><span className="text-slate-500">Time to Repay</span><span className="font-bold text-slate-800">3 Months</span></div>
+                                                </div>
+                                            </div>
+                                            <button onClick={handleConfirmLoan} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition transform active:scale-95">Confirm Loan</button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* --- ACTIVE LOANS MODAL --- */}
+                                {showActiveLoansModal && (
+                                    <div className="absolute inset-0 z-50 bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowActiveLoansModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Active Loans</h2>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-24">
+                                            {activeLoans.filter(l => l.status === 'Active').length === 0 && (
+                                                <div className="flex flex-col items-center justify-center h-64 text-center">
+                                                    <div className="bg-slate-100 p-4 rounded-full mb-4"><Icon name="check" className="text-slate-400"/></div>
+                                                    <p className="text-slate-500">You have no active loans.</p>
+                                                </div>
+                                            )}
+                                            {activeLoans.map(loan => (
+                                                <div key={loan.id} className={`bg-white p-5 rounded-2xl shadow-sm border relative overflow-hidden ${loan.status === 'Paid' ? 'border-emerald-100 opacity-75' : 'border-indigo-50'}`}>
+                                                    <div className={`absolute top-0 left-0 w-1 h-full ${loan.status === 'Paid' ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${loan.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                                {loan.status.toUpperCase()}
+                                                            </span>
+                                                            <h3 className="text-2xl font-bold text-slate-800 mt-2">₹{loan.amount.toLocaleString()}</h3>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-xs text-slate-400">Taken on</p>
+                                                            <p className="text-sm font-medium text-slate-600">{loan.date}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="border-t border-slate-50 pt-3 flex justify-between items-center text-xs">
+                                                        <span className="text-slate-500">Repayment Due</span>
+                                                        <span className="font-bold text-slate-800">In 3 Months</span>
+                                                    </div>
+                                                    {loan.status === 'Active' && (
+                                                        <button 
+                                                            onClick={() => handleInitiateRepayment(loan.id, loan.amount)}
+                                                            className="mt-4 w-full bg-slate-900 text-white font-bold py-2.5 rounded-lg text-xs hover:bg-slate-800 transition"
+                                                        >
+                                                            Pay Now
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                 {/* --- REPAYMENT MODAL --- */}
+                                {showRepaymentModal && (
+                                    <div className="absolute inset-0 z-[60] bg-slate-50 animate-slide-down flex flex-col">
+                                        <div className="bg-white shadow-sm border-b border-slate-100 p-4 pt-12 flex items-center space-x-3 sticky top-0 z-10">
+                                            <button onClick={() => setShowRepaymentModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                                <Icon name="back" size={24} className="text-slate-600"/>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-slate-800">Repay Loan</h2>
+                                        </div>
+                                        <div className="p-6 flex flex-col space-y-6">
+                                            <div className="text-center">
+                                                <p className="text-slate-500 text-sm mb-2">Repayment Amount</p>
+                                                <div className="flex items-center justify-center text-4xl font-bold text-slate-800">
+                                                    <span className="text-slate-400 mr-1">₹</span>
+                                                    <span className="text-4xl font-bold text-slate-800">{repaymentAmount}</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pay From</p>
+                                                <div onClick={() => setRepaymentMethod('savings')} className={`p-4 rounded-xl border flex justify-between items-center cursor-pointer transition ${repaymentMethod === 'savings' ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'bg-white border-slate-200'}`}>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`p-2 rounded-lg ${repaymentMethod === 'savings' ? 'bg-emerald-200' : 'bg-slate-100'}`}><Icon name="wallet" size={20} className={repaymentMethod === 'savings' ? 'text-emerald-700' : 'text-slate-500'}/></div>
+                                                        <div><p className="font-bold text-slate-800 text-sm">My Savings</p><p className="text-xs text-slate-500">Balance: ₹{protectedSavings.toLocaleString()}</p></div>
+                                                    </div>
+                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${repaymentMethod === 'savings' ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>{repaymentMethod === 'savings' && <Icon name="check" size={12} className="text-white"/>}</div>
+                                                </div>
+                                                <div onClick={() => setRepaymentMethod('bank')} className={`p-4 rounded-xl border flex justify-between items-center cursor-pointer transition ${repaymentMethod === 'bank' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-500' : 'bg-white border-slate-200'}`}>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`p-2 rounded-lg ${repaymentMethod === 'bank' ? 'bg-indigo-200' : 'bg-slate-100'}`}><Icon name="home" size={20} className={repaymentMethod === 'bank' ? 'text-indigo-700' : 'text-slate-500'}/></div>
+                                                        <div><p className="font-bold text-slate-800 text-sm">HDFC Bank</p><p className="text-xs text-slate-400">**** 8832</p></div>
+                                                    </div>
+                                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${repaymentMethod === 'bank' ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>{repaymentMethod === 'bank' && <Icon name="check" size={12} className="text-white"/>}</div>
+                                                </div>
+                                            </div>
+                                            <button onClick={handleConfirmRepayment} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 transition transform active:scale-95">Repay Loan</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* --- LOAN ERROR MODAL --- */}
+                                {showLoanErrorModal && (
+                                    <div className="absolute inset-0 z-[80] bg-black/80 flex items-center justify-center p-4 animate-fade-in">
+                                        <div className="bg-white w-full max-w-xs rounded-3xl p-6 relative animate-slide-up">
+                                            <button onClick={() => setShowLoanErrorModal(false)} className="absolute top-4 right-4 p-1 bg-slate-100 rounded-full text-slate-500"><Icon name="close" size={20}/></button>
+                                            <div className="flex flex-col items-center text-center mt-4 space-y-4">
+                                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center"><Icon name="lock" size={32} className="text-red-500" /></div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-slate-900 leading-tight">Amount exceeds eligibility</h3>
+                                                    <p className="text-slate-500 text-sm mt-2">You tried to borrow more than your current eligible limit of <span className="font-bold text-slate-700">₹{currentLoanEligibility.toLocaleString()}</span>.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* --- LOAN AD MODAL --- */}
+                                {showLoanAdModal && (
+                                    <div className="absolute inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center">
+                                        <div className="bg-white w-full sm:w-80 rounded-t-3xl sm:rounded-3xl p-6 animate-slide-down m-4">
+                                            <div className="flex justify-end">
+                                                <button onClick={() => setShowLoanAdModal(false)} className="p-1 bg-slate-100 rounded-full"><Icon name="close" size={20}/></button>
+                                            </div>
+                                            <div className="text-center space-y-4 mt-2">
+                                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                                                    <Icon name="lock" size={30} className="text-red-500"/>
+                                                </div>
+                                                <h3 className="text-xl font-bold text-slate-900">Amount more than current savings</h3>
+                                                <p className="text-slate-500 text-sm">
+                                                    You tried to withdraw more than your available balance of ₹{protectedSavings.toLocaleString()}.
+                                                </p>
+                                                
+                                                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 mt-4">
+                                                    <div className="flex items-center space-x-2 mb-2">
+                                                        <Icon name="lightning" size={18} className="text-indigo-600 fill-indigo-600"/>
+                                                        <span className="font-bold text-indigo-700 text-sm">Quick Loan Offer</span>
+                                                    </div>
+                                                    <p className="text-left text-slate-600 text-xs mb-3">
+                                                        Take a quick loan to meet your financial requirements. Eligible for up to <strong>₹{currentLoanEligibility.toLocaleString()}</strong>.
+                                                    </p>
+                                                    <button 
+                                                        onClick={() => {setShowLoanAdModal(false); setShowTakeLoanModal(true);}}
+                                                        className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-indigo-200"
+                                                    >
+                                                        Take Loan
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+
+                                {/* --- Content Area --- */}
+                                <div className="flex-1 overflow-y-auto scrollbar-hide pb-24">
+
+                                    {/* HEADER / HERO SECTION */}
+                                    {activeTab === 'home' && (
+                                        <div>
+                                            {/* GREEN HERO SECTION */}
+                                            <div className="bg-[#047857] pt-12 pb-12 px-6 rounded-b-[40px] shadow-lg relative z-10">
+                                                <div className="flex justify-between items-center mb-8">
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="bg-white/20 p-1.5 rounded-lg">
+                                                            <Icon name="shield" size={18} className="text-white" />
+                                                        </div>
+                                                        <span className="text-white font-bold text-lg tracking-wide">EarnShield</span>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <Icon name="bell" size={24} className="text-white" />
+                                                        <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-center mb-6">
+                                                    <p className="text-emerald-100 text-sm font-medium mb-2">Today's Earnings</p>
+                                                    <h1 className="text-5xl font-bold text-white mb-2">₹{todayEarnings}</h1>
+                                                    <p className="text-emerald-200 text-xs">Target: ₹{dailyTarget}</p>
+                                                </div>
+
+                                                <div className="mt-6 mb-4">
+                                                    <div className="flex justify-between text-white text-xs font-bold mb-2 px-1">
+                                                        <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] tracking-wider">TRACKING</span>
+                                                        <span>{earningsPercentage}%</span>
+                                                    </div>
+                                                    <div className="h-3 bg-black/20 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-white rounded-full transition-all duration-1000 ease-out relative"
+                                                            style={{ width: `${Math.min(earningsPercentage, 100)}%` }}
+                                                        >
+                                                             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-50 animate-pulse"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* --- NEW: CONDITIONAL CTA (Withdraw or Save Extra) --- */}
+                                                {/* Case 1: Deficit (Earnings < Target) -> Withdraw Sub-line. UPDATED: Show only if < 50% */}
+                                                {earningsPercentage < 50 ? (
+                                                    <button 
+                                                        onClick={handleInstantWithdraw}
+                                                        className="w-full bg-emerald-900/40 hover:bg-emerald-900/60 backdrop-blur-sm border border-emerald-400/30 rounded-xl p-3 flex items-center justify-between transition active:scale-95 group"
+                                                    >
+                                                        <div className="text-left">
+                                                            <div className="flex items-center space-x-2">
+                                                                 <Icon name="refresh" size={14} className="text-emerald-300" />
+                                                                 <span className="text-emerald-100 text-xs font-bold">WITHDRAW SUB-LINE</span>
+                                                            </div>
+                                                            <p className="text-white text-xs mt-1">Hit today's target by withdrawing <strong>₹{deficit}</strong> from savings</p>
+                                                        </div>
+                                                        <div className="bg-white text-emerald-800 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm group-hover:bg-emerald-50">
+                                                            Withdraw
+                                                        </div>
+                                                    </button>
+                                                ) : surplus > 0 ? (
+                                                    /* Case 2: Surplus (Earnings > Target) -> Save Extra Today (Dark Green Style) */
+                                                    <button 
+                                                        onClick={handleInstantSaveExtra}
+                                                        className="w-full bg-emerald-900/40 hover:bg-emerald-900/60 backdrop-blur-sm border border-emerald-400/30 rounded-xl p-3 flex items-center justify-between transition active:scale-95 group"
+                                                    >
+                                                        <div className="text-left">
+                                                            <div className="flex items-center space-x-2">
+                                                                 <Icon name="wallet" size={14} className="text-white" />
+                                                                 <span className="text-white text-xs font-bold uppercase tracking-wider">Save Extra Today</span>
+                                                            </div>
+                                                            <p className="text-white text-xs mt-1">You earned <strong>₹{surplus}</strong> extra!</p>
+                                                        </div>
+                                                        <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-emerald-400 group-hover:bg-emerald-400">
+                                                            Save it Now
+                                                        </div>
+                                                    </button>
+                                                ) : null}
+                                            </div>
+
+                                            {/* WHITE CARD SECTION (Total Savings) */}
+                                            <div className="px-6 -mt-6 relative z-20">
+                                                <div className="bg-emerald-50 p-6 rounded-3xl shadow-sm border border-emerald-100">
+                                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Savings</p>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-3xl font-bold text-slate-800">₹{protectedSavings.toLocaleString()}</div>
+                                                        
+                                                        <div className="flex items-center space-x-2">
+                                                            <div className="flex items-center bg-emerald-100 text-emerald-600 px-3 py-1.5 rounded-xl space-x-1">
+                                                                <Icon name="trendingUp" size={14} />
+                                                                <span className="text-xs font-bold">+₹{(150 * autoSavePercent / 100).toFixed(0)} saved</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* VIEW TRANSACTIONS LINK */}
+                                                    <div 
+                                                        onClick={() => setShowTransactionsModal(true)}
+                                                        className="mt-3 pt-3 border-t border-slate-200/50 flex justify-between items-center cursor-pointer group"
+                                                    >
+                                                        <span className="text-xs font-semibold text-indigo-600 group-hover:text-indigo-700">View Transactions</span>
+                                                        <Icon name="chevronRight" size={14} className="text-indigo-400 group-hover:translate-x-1 transition-transform" />
+                                                    </div>
+
+                                                    {/* TOP-UP SAVINGS LINK (RENAMED) */}
+                                                    <div 
+                                                        onClick={() => setShowManualSaveModal(true)}
+                                                        className="mt-2 pt-2 flex justify-between items-center cursor-pointer group"
+                                                    >
+                                                        <span className="text-xs font-semibold text-emerald-600 group-hover:text-emerald-700">Top-Up Savings</span>
+                                                        <Icon name="chevronRight" size={14} className="text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Buffer Health Stats */}
+                                            <div className="px-6 mt-4">
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Covered Days</p>
+                                                            <p className="text-indigo-600 font-bold text-xl">{bufferDays} Days Safe</p>
+                                                        </div>
+                                                        <div className="bg-indigo-50 p-3 rounded-full text-indigo-600">
+                                                            <Icon name="shield" size={24} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* GOALS TAB */}
+                                    {activeTab === 'goals' && (
+                                        <div className="pt-12 p-6 space-y-6">
+                                            <h1 className="text-2xl font-bold text-slate-800">Your Goals</h1>
+                                            {goals.map(goal => (
+                                                <div key={goal.id} onClick={() => { setSelectedGoal(goal); setShowGoalDetailModal(true); }} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 cursor-pointer active:scale-95 transition">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="font-bold text-lg text-slate-800">{goal.name}</h3>
+                                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${goal.status === 'Active' ? 'text-emerald-600 bg-emerald-100' : 'text-slate-500 bg-slate-100'}`}>{goal.status}</span>
+                                                    </div>
+                                                    <p className="text-slate-500 text-xs mb-2">₹{goal.current.toLocaleString()} / ₹{goal.target.toLocaleString()}</p>
+                                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+                                                        <div className={`h-full w-0 transition-all duration-500 ${goal.color === 'emerald' ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}></div>
+                                                    </div>
+                                                    <p className="text-slate-400 text-[10px]">Tap to add money or manage</p>
+                                                </div>
+                                            ))}
+
+                                            <button onClick={() => setShowCreateGoalModal(true)} className="w-full border-2 border-dashed border-slate-300 text-slate-400 font-bold py-4 rounded-2xl hover:bg-slate-50 transition flex items-center justify-center">
+                                                <Icon name="plus" size={20} className="mr-2"/> Create New Goal
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* WITHDRAWAL TAB (UPDATED) */}
+                                    {activeTab === 'withdrawal' && (
+                                        <div className="pt-12 p-6 space-y-6">
+                                            <h1 className="text-2xl font-bold text-slate-800">Withdrawal</h1>
+
+                                            {/* Section 1: Withdraw from Savings */}
+                                            <div className="bg-emerald-50 p-6 rounded-3xl shadow-sm border border-emerald-100">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Your Savings</p>
+                                                        <h2 className="text-3xl font-bold text-slate-800 mt-1">₹{protectedSavings.toLocaleString()}</h2>
+                                                    </div>
+                                                    <div className="bg-emerald-100 p-2 rounded-xl">
+                                                        <Icon name="wallet" size={24} className="text-emerald-600"/>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2 mb-6">
+                                                    <div className="flex items-center text-xs text-slate-500">
+                                                        <Icon name="check" size={14} className="text-emerald-500 mr-2"/>
+                                                        Instant Transfer
+                                                    </div>
+                                                    <div className="flex items-center text-xs text-slate-500">
+                                                        <Icon name="check" size={14} className="text-emerald-500 mr-2"/>
+                                                        0 Withdrawal Fees
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setShowWithdrawModal(true)}
+                                                    className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition"
+                                                >
+                                                    Withdraw from Savings
+                                                </button>
+                                            </div>
+
+                                            {/* Section 2: Instant Loan */}
+                                            <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 rounded-3xl shadow-lg text-white relative overflow-hidden">
+                                                {/* Background decoration */}
+                                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                                                
+                                                <div className="relative z-10">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <p className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Instant Credit Line</p>
+                                                        <Icon name="lightning" size={24} className="text-yellow-400 fill-yellow-400"/>
+                                                    </div>
+                                                    <h2 className="text-3xl font-bold mb-4">₹{totalLoanEligibility.toLocaleString()}</h2>
+                                                    <p className="text-indigo-200 text-xs mb-6">Eligible limit based on your savings & monthly income.</p>
+                                                    
+                                                    <div className="flex flex-col space-y-3">
+                                                        <button 
+                                                            onClick={() => setShowTakeLoanModal(true)}
+                                                            className="w-full bg-white text-indigo-700 font-bold py-3 rounded-xl text-sm shadow-sm active:scale-95 transition"
+                                                        >
+                                                            Take a Quick Loan
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setShowActiveLoansModal(true)}
+                                                            className="w-full bg-white text-indigo-700 font-bold py-3 rounded-xl text-sm shadow-sm active:scale-95 transition"
+                                                        >
+                                                            View Active Loans
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <p className="text-center text-xs text-slate-400 pt-4">
+                                                Loans are provided by RBI registered NBFC partners.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* ANALYZE TAB */}
+                                    {activeTab === 'analyze' && (
+                                        <div className="pt-12 p-6 space-y-6">
+                                            <h1 className="text-2xl font-bold text-slate-800">Earnings Analysis</h1>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                                <p className="text-slate-400 text-xs font-bold uppercase">Avg Monthly Income</p>
+                                                <h2 className="text-3xl font-bold text-slate-800 mt-1">₹{avgMonthlyIncome.toLocaleString()}</h2>
+                                            </div>
+                                            {/* ... rest of analyze tab ... */}
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                                <h3 className="font-bold text-slate-800 mb-4">Platform Breakdown</h3>
+                                                <div className="space-y-4">
+                                                    {[{ name: 'Swiggy', amount: '₹12,400', pct: 45, color: 'bg-orange-500' },
+                                                        { name: 'Zomato', amount: '₹8,200', pct: 30, color: 'bg-red-500' },
+                                                        { name: 'Uber', amount: '₹5,100', pct: 18, color: 'bg-black' },
+                                                        { name: 'Other', amount: '₹2,750', pct: 7, color: 'bg-slate-300' }].map(platform => (
+                                                        <div key={platform.name}>
+                                                            <div className="flex justify-between text-sm mb-1">
+                                                                <span className="font-medium text-slate-700">{platform.name}</span>
+                                                                <span className="text-slate-500">{platform.amount}</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                <div className={`h-full ${platform.color}`} style={{ width: `${platform.pct}%` }}></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-800 text-white p-6 rounded-3xl shadow-lg">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-bold text-lg">Tax Summary</h3>
+                                                        <p className="text-slate-400 text-xs mt-1">FY 2024-25 (Estimated)</p>
+                                                    </div>
+                                                    <Icon name="pieChart" className="text-slate-400" />
+                                                </div>
+                                                <div className="mt-6 flex justify-between items-end">
+                                                    <div>
+                                                        <p className="text-xs text-slate-400">Liability</p>
+                                                        <p className="font-bold text-xl">₹1,200</p>
+                                                    </div>
+                                                    <button className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg transition">
+                                                        Download Report
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* PROFILE TAB */}
+                                    {activeTab === 'profile' && (
+                                        <div className="pt-12 p-6 space-y-6">
+                                            <div className="flex items-center space-x-4 mb-8">
+                                                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
+                                                    <Icon name="user" size={32} className="text-slate-400" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-xl font-bold text-slate-800">Ramu K.</h2>
+                                                    <p className="text-emerald-600 text-sm font-medium">Verified Partner</p>
+                                                </div>
+                                            </div>
+                                            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-1 shadow-lg shadow-emerald-500/20">
+                                                <div className="bg-white/10 backdrop-blur-sm p-6 rounded-[20px] text-white">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <h3 className="font-bold text-lg">Invite a Friend</h3>
+                                                        <div className="bg-white/20 p-1 rounded-lg">
+                                                            <Icon name="user" size={16} />
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-emerald-50 text-sm mb-6">
+                                                        Help a friend protect their income. You <span className="font-bold text-white underline">BOTH get ₹50</span> in your buffer when they start.
+                                                    </p>
+                                                    <div className="bg-black/20 rounded-xl p-3 flex justify-between items-center mb-4 border border-white/10">
+                                                        <span className="font-mono tracking-widest text-sm font-bold">EARN50</span>
+                                                        <span className="text-xs font-bold text-emerald-300">COPY</span>
+                                                    </div>
+                                                    <button className="w-full bg-white text-emerald-600 font-bold py-3 rounded-xl shadow-sm active:scale-95 transition">
+                                                        Share via WhatsApp
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50">
+                                                <div 
+                                                    onClick={() => setShowSettingsModal(true)}
+                                                    className="p-4 flex justify-between items-center text-slate-600 text-sm hover:bg-slate-50 active:bg-slate-100 cursor-pointer transition"
+                                                >
+                                                    <span className="font-medium text-indigo-600">Account Settings</span>
+                                                    <Icon name="settings" size={16} className="text-indigo-400" />
+                                                </div>
+                                                {['Linked Bank Account', 'Help & Support', 'Log Out'].map((item) => (
+                                                    <div key={item} className="p-4 flex justify-between items-center text-slate-600 text-sm hover:bg-slate-50 active:bg-slate-100 cursor-pointer transition">
+                                                        <span>{item}</span>
+                                                        <Icon name="check" size={14} className="text-slate-300 opacity-0" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                </div>
+
+                                {/* --- Bottom Navigation --- */}
+                                <div className="absolute bottom-0 w-full bg-white border-t border-slate-100 px-6 py-3 pb-8 flex justify-between items-center z-50">
+                                    {[
+                                        { id: 'home', label: 'Home', icon: 'home' },
+                                        { id: 'goals', label: 'Goals', icon: 'target' },
+                                        { id: 'withdrawal', label: 'Withdrawal', icon: 'lock' },
+                                        { id: 'analyze', label: 'Analyze', icon: 'pieChart' },
+                                        { id: 'profile', label: 'Profile', icon: 'user' }
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`flex flex-col items-center space-y-1 transition-colors duration-200 ${activeTab === tab.id ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+                                                }`}
+                                        >
+                                            <Icon
+                                                name={tab.icon}
+                                                size={24}
+                                                className={activeTab === tab.id ? "fill-indigo-100" : ""}
+                                            />
+                                            <span className="text-[10px] font-medium">{tab.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </IPhoneWrapper>
+
+                        {/* --- Simulation Button (Outside Phone) - Always Visible --- */}
+                        <button
+                            onClick={handleCompleteTrip}
+                            className="group flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full shadow-lg shadow-indigo-500/30 transition-all transform active:scale-95"
+                        >
+                            <Icon name="money" size={20} />
+                            <span className="font-bold text-sm">Simulate completion of ₹150 Trip</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
